@@ -32,7 +32,7 @@ function Loader({ onDone }) {
       <span className="font-arizonia text-4xl text-brand-offwhite">Loading</span>
       <div className="h-px w-48 overflow-hidden bg-brand-offwhite/15">
         <div
-          className="h-full bg-brand-crimson transition-[width] duration-200 ease-out"
+          className="h-full bg-brand-crimson"
           style={{ width: `${progress}%` }}
         />
       </div>
