@@ -109,17 +109,16 @@ function Camera(props) {
     ;[placeholderTex, ...galleryTex].forEach((t) => coverTexture(t, SCREEN_SIZE))
     const { scene } = useGLTF("/model/camera/camera.glb")
     const bodyTex = useTexture({
-      map: "/model/camera/camera_camera_BaseColor.png",
-      normalMap: "/model/camera/camera_camera_NormalOpenGL.png",
-      roughnessMap: "/model/camera/camera_camera_Roughness.png",
-      metalnessMap: "/model/camera/camera_camera_Metallic.png",
+      map: "/model/camera/camera_camera_BaseColor.webp",
+      normalMap: "/model/camera/camera_camera_NormalOpenGL.webp",
+      roughnessMap: "/model/camera/camera_camera_Roughness.webp",
+      metalnessMap: "/model/camera/camera_camera_Metallic.webp",
     })
     useThree(({ camera }) => {
         camera.position.z = 6
     })
     Object.values(bodyTex).forEach((t) => { t.flipY = true })
     scene.traverse((child) => {
-    	console.log('child:', child.name)
       if (!child.isMesh || child.userData.isScreen) return
         child.material = new THREE.MeshStandardMaterial({
           map: bodyTex.map,
