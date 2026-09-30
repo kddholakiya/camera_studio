@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import * as THREE from 'three'
 import { Environment, useGLTF, useTexture } from '@react-three/drei'
 import { useFrame, useThree } from '@react-three/fiber'
@@ -30,6 +30,37 @@ function coverTexture(tex, [w, h]) {
   tex.needsUpdate = true
 }
 
+// mobile pose keeps the camera closer to center so it stays on-screen at narrow widths
+const DESKTOP_POSE = { position: [6, -0.3, 0], rotation: [Math.PI / 18, Math.PI / 11.2, 0], scale: [1.2, 1.2, 1.2] }
+const MOBILE_POSE = { position: [1, -0.7, 0], rotation: [Math.PI / 18, Math.PI / 3, 0], scale: [0.85, 0.85, 0.85] }
+const MOBILE_BREAKPOINT = 768
+
+// scroll-driven tween targets, scaled down on mobile so the model stays framed
+// while riding the same hero -> about -> gallery scroll path
+const DESKTOP_SCROLL_TWEENS = {
+  heroToAbout: { x: -1.5, y: 0.6 },
+  aboutToGalleryPos: { x: 0.2, y: -0.3 },
+  galleryZoomScale: 3,
+}
+const MOBILE_SCROLL_TWEENS = {
+  heroToAbout: { x: -0.2, y: 0.5 },
+  aboutToGalleryPos: { x: 0, y: 0 },
+  galleryZoomScale: 1.3,
+}
+
+function useIsMobile() {
+  const [isMobile, setIsMobile] = useState(() => window.innerWidth < MOBILE_BREAKPOINT)
+
+  useEffect(() => {
+    const mql = window.matchMedia(`(max-width: ${MOBILE_BREAKPOINT - 1}px)`)
+    const onChange = (e) => setIsMobile(e.matches)
+    mql.addEventListener('change', onChange)
+    return () => mql.removeEventListener('change', onChange)
+  }, [])
+
+  return isMobile
+}
+
 const _ndc = new THREE.Vector3()
 const _dir = new THREE.Vector3()
 const _target = new THREE.Vector3()
@@ -58,13 +89,12 @@ function screenToWorld(screen, camera, planeZ, out) {
   return out.copy(camera.position).addScaledVector(_dir, t)
 }
 
-function Camera(
-  {
-    // position = [4, 0, 0],rotation = [Math.PI/15, Math.PI/2.8, 0],scale = [1, 1, 1]
-    position = [6, -0.3, 0],rotation = [Math.PI/18,Math.PI/11.2, 0],scale = [1.2, 1.2, 1.2]
-  }
-) {
-
+function Camera(props) {
+    const isMobile = useIsMobile()
+    const pose = isMobile ? MOBILE_POSE : DESKTOP_POSE
+    const position = props.position ?? pose.position
+    const rotation = props.rotation ?? pose.rotation
+    const scale = props.scale ?? pose.scale
 
     const groupRef = useRef(null)
     const pathGroupRef = useRef(null)
@@ -157,6 +187,7 @@ function Camera(
 
   useEffect(() => {
     if (!groupRef.current || !keyLightRef.current || !rimLightRef.current) return
+    const scrollTweens = isMobile ? MOBILE_SCROLL_TWEENS : DESKTOP_SCROLL_TWEENS
 
     const ctx = gsap.context(() => {
       const tl = gsap.timeline({
@@ -164,13 +195,13 @@ function Camera(
           trigger: '#hero',
           start: 'top top',
           endTrigger: '#about',
-          end: 'bottom bottom',
+          end: 'top top',
           scrub: 1,
           
         },
       })
 
-      tl.to(groupRef.current.position, { x: -1.5, y: 0.6, z: -1.5, ease: 'none' }, 0)
+      tl.to(groupRef.current.position, { ...scrollTweens.heroToAbout, ease: 'none' }, 0)
         .to(groupRef.current.rotation, { x: Math.PI / 3, y: Math.PI * 3.5,  ease: 'none' }, 0)
         .to(keyLightRef.current.position, { x: -4, y: 2, z: -2, ease: 'none' }, 0)
         .to(keyLightRef.current, { intensity: 0.5, ease: 'none' }, 0)
@@ -185,7 +216,7 @@ function Camera(
       const faceFrontTl = gsap.timeline({
         scrollTrigger: {
           trigger: '#about',
-          start: 'top top',
+          start: 'bottom bottom',
           endTrigger: '#gallery-heading',
           end: 'bottom bottom',
           scrub: 1,
@@ -204,7 +235,7 @@ function Camera(
         },
       })
 
-      faceFrontTl1.to(groupRef.current.position, { x: 0.2, ease: 'none' }, 0)
+      faceFrontTl1.to(groupRef.current.position, { ...scrollTweens.aboutToGalleryPos, ease: 'none' }, 0)
 
       const zoomGalleryTl = gsap.timeline({
         scrollTrigger: {
@@ -215,7 +246,8 @@ function Camera(
         },
       })
       // zoomGalleryTl.to(groupRef.current.position, { x: 3, ease: 'none' }, 0)
-      zoomGalleryTl.to(groupRef.current.scale, { x: 3, y: 3, z: 3, ease: 'none' }, 0)
+      const zoomScale = scrollTweens.galleryZoomScale
+      zoomGalleryTl.to(groupRef.current.scale, { x: zoomScale, y: zoomScale, z: zoomScale, ease: 'none' }, 0)
 
       const showOnScreen = (tex) => {
         const mat = screenMatRef.current
@@ -272,7 +304,7 @@ function Camera(
     })
 
     return () => ctx.revert()
-  }, [galleryTex, placeholderTex])
+  }, [galleryTex, placeholderTex, isMobile])
 
   return (
     <>
