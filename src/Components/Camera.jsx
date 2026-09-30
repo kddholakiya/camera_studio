@@ -223,7 +223,7 @@ function Camera(props) {
         },
       })
 
-      faceFrontTl.to(groupRef.current.rotation, { x: 0, y: Math.PI * 3.5, z: Math.PI * 2, ease: 'none' }, 0)
+      faceFrontTl.to(groupRef.current.rotation, { x: 0, z: Math.PI * 2, ease: 'none' }, 0)
 
       const faceFrontTl1 = gsap.timeline({
         scrollTrigger: {
